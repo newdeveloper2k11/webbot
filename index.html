@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NamaHealing Bot</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Sử dụng font Inter làm font chữ mặc định */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Tùy chỉnh thanh cuộn cho đẹp hơn */
+        #chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        #chat-container::-webkit-scrollbar-thumb {
+            background-color: #94a3b8;
+            border-radius: 10px;
+            border: 3px solid #f1f5f9;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-gray-800">
+
+    <div id="app" class="flex flex-col h-screen">
+        <!-- Header -->
+        <header class="text-center py-6 sm:py-8 border-b border-slate-200">
+            <h1 class="text-3xl sm:text-4xl font-bold text-teal-600">NamaHealing Bot</h1>
+        </header>
+
+        <!-- Chat Container -->
+        <main id="chat-container" class="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div class="flex flex-col space-y-4 max-w-3xl mx-auto">
+                <!-- Initial Bot Message -->
+                <div class="bot-message self-start">
+                    <div class="bg-white rounded-xl rounded-tl-none p-4 shadow-md max-w-lg">
+                        <p class="text-base">
+                           Xin chào, tôi là trợ lý lớp thiền NamaHealing, tôi có thể giúp gì cho bạn?
+                        </p>
+                    </div>
+                </div>
+                <!-- Messages will be appended here by JavaScript -->
+            </div>
+        </main>
+
+        <!-- Input Form -->
+        <footer class="bg-white/80 backdrop-blur-sm border-t border-slate-200">
+            <div class="max-w-3xl mx-auto p-4">
+                <form id="chat-form" class="flex items-center space-x-2">
+                    <input id="message-input" type="text" placeholder="Nhập câu hỏi của bạn..." autocomplete="off"
+                        class="w-full py-3 px-4 bg-slate-100 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-teal-500 transition-shadow">
+                    <button type="submit"
+                        class="bg-teal-500 text-white rounded-full p-3 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all duration-200 shadow-md hover:shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </form>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const chatContainer = document.getElementById('chat-container').querySelector('.space-y-4');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+
+        // --- API Configuration ---
+        // QUAN TRỌNG: Thay thế giá trị này bằng khóa API OpenAI của bạn.
+        const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY';
+        const API_URL = 'https://api.openai.com/v1/chat/completions';
+
+        // --- Functions ---
+
+        /**
+         * Thêm tin nhắn vào giao diện chat
+         * @param {string} message - Nội dung tin nhắn
+         * @param {'user' | 'bot' | 'loading'} sender - Người gửi ('user', 'bot', hoặc 'loading')
+         */
+        function addMessage(message, sender) {
+            // Xóa tin nhắn "đang gõ..." nếu có
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+
+            const messageElement = document.createElement('div');
+            messageElement.classList.add(`${sender}-message`, 'self-start');
+            
+            let content = '';
+            if (sender === 'user') {
+                messageElement.classList.add('self-end');
+                content = `
+                    <div class="bg-teal-500 text-white rounded-xl rounded-tr-none p-4 shadow-md max-w-lg">
+                        <p class="text-base">${message}</p>
+                    </div>
+                `;
+            } else if (sender === 'bot') {
+                content = `
+                    <div class="bg-white rounded-xl rounded-tl-none p-4 shadow-md max-w-lg">
+                        <p class="text-base">${message}</p>
+                    </div>
+                `;
+            } else if (sender === 'loading') {
+                messageElement.id = 'loading-indicator';
+                content = `
+                    <div class="bg-white rounded-xl rounded-tl-none p-4 shadow-md max-w-lg">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 0s;"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            messageElement.innerHTML = content;
+            chatContainer.appendChild(messageElement);
+
+            // Tự động cuộn xuống tin nhắn mới nhất
+            chatContainer.parentElement.scrollTop = chatContainer.parentElement.scrollHeight;
+        }
+
+        /**
+         * Gửi yêu cầu đến API của OpenAI và nhận phản hồi
+         * @param {string} userMessage - Tin nhắn của người dùng
+         */
+        async function getBotResponse(userMessage) {
+            // Hiển thị chỉ báo đang tải
+            addMessage('', 'loading');
+
+            if (OPENAI_API_KEY === 'YOUR_OPENAI_API_KEY') {
+                // Phản hồi giả lập nếu chưa có API key
+                setTimeout(() => {
+                    addMessage('Vui lòng cung cấp API Key của OpenAI trong file mã nguồn để kết nối. Đây là tin nhắn giả lập.', 'bot');
+                }, 1500);
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo', // Hoặc một model khác bạn muốn sử dụng
+                        messages: [{ role: 'user', content: userMessage }],
+                        temperature: 0.7,
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Error: ${response.status} - ${errorData.error.message}`);
+                }
+
+                const data = await response.json();
+                const botMessage = data.choices[0].message.content.trim();
+                addMessage(botMessage, 'bot');
+
+            } catch (error) {
+                console.error('Error fetching OpenAI response:', error);
+                addMessage(`Xin lỗi, đã có lỗi xảy ra: ${error.message}`, 'bot');
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Xử lý khi gửi form
+        chatForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const userInput = messageInput.value.trim();
+
+            if (userInput) {
+                addMessage(userInput, 'user');
+                messageInput.value = '';
+                getBotResponse(userInput);
+            }
+        });
+
+    </script>
+</body>
+</html>
