@@ -23,7 +23,7 @@ exports.handler = async function(event) {
                 'Authorization': `Bearer ${OPENAI_API_KEY}`,
             },
             body: JSON.stringify({
-                model: 'gpt-3.5-turbo',
+                model: 'ft:gpt-4o-2024-08-06:vtn-architects::BywzHAiF',
                 messages: [{ role: 'user', content: message }],
                 temperature: 0.7,
             }),
