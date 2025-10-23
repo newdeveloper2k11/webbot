@@ -11,16 +11,40 @@ exports.handler = async function(event) {
     }
 
     try {
-        const { message, systemPrompt } = JSON.parse(event.body);
-        if (!message) {
-            return { statusCode: 400, body: JSON.stringify({ error: 'Không có tin nhắn nào được cung cấp.' }) };
+        const { message, systemPrompt, messages } = JSON.parse(event.body);
+
+        const sanitizedMessages = Array.isArray(messages)
+            ? messages
+                .filter((entry) => entry && typeof entry.role === 'string' && typeof entry.content === 'string')
+                .map((entry) => ({ role: entry.role, content: entry.content }))
+            : [];
+
+        const trimmedMessage = typeof message === 'string' ? message.trim() : '';
+        if (trimmedMessage) {
+            const lastEntry = sanitizedMessages[sanitizedMessages.length - 1];
+            const alreadyIncludesLatestUser = lastEntry && lastEntry.role === 'user' && lastEntry.content === trimmedMessage;
+            if (!alreadyIncludesLatestUser) {
+                sanitizedMessages.push({ role: 'user', content: trimmedMessage });
+            }
         }
 
-        const messages = [];
-        if (systemPrompt) {
-            messages.push({ role: 'system', content: systemPrompt });
+        if (!sanitizedMessages.length) {
+            return { statusCode: 400, body: JSON.stringify({ error: 'Không có tin nhắn hợp lệ nào được cung cấp.' }) };
         }
-        messages.push({ role: 'user', content: message });
+
+        let payloadMessages = sanitizedMessages;
+
+        if (systemPrompt && typeof systemPrompt === 'string' && systemPrompt.trim()) {
+            const normalizedSystemPrompt = systemPrompt.trim();
+            payloadMessages = payloadMessages.filter((entry) => entry.role !== 'system');
+            payloadMessages.unshift({ role: 'system', content: normalizedSystemPrompt });
+        } else {
+            const systemIndex = payloadMessages.findIndex((entry) => entry.role === 'system');
+            if (systemIndex > 0) {
+                const [systemMessage] = payloadMessages.splice(systemIndex, 1);
+                payloadMessages.unshift(systemMessage);
+            }
+        }
 
         const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -30,7 +54,7 @@ exports.handler = async function(event) {
             },
             body: JSON.stringify({
                 model: 'ft:gpt-4o-2024-08-06:vtn-architects::CRsIxlHp',
-                messages,
+                messages: payloadMessages,
                 temperature: 0.7,
             }),
         });
