@@ -53,6 +53,8 @@ Khi nói về lợi ích của thiền, chỉ dựa trên chia sẻ của kiến
 
 Luôn trả lời ấm áp, nhẹ nhàng, khích lệ; không đưa lời khuyên y khoa hay pháp lý. Nếu người dùng có triệu chứng nặng hoặc dấu hiệu tự hại, hãy khuyến khích họ gặp bác sĩ chuyên khoa.
 `;
+        const conversationHistory = [];
+
         function addMessage(message, sender) {
             const loadingIndicator = document.getElementById('loading-indicator');
             if (loadingIndicator) loadingIndicator.remove();
@@ -80,7 +82,11 @@ Luôn trả lời ấm áp, nhẹ nhàng, khích lệ; không đưa lời khuyê
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: userMessage,
-                        systemPrompt: SYSTEM_PROMPT
+                        systemPrompt: SYSTEM_PROMPT,
+                        messages: [
+                            ...conversationHistory,
+                            { role: 'user', content: userMessage }
+                        ]
                     })
                 });
                 if (!response.ok) {
@@ -88,6 +94,8 @@ Luôn trả lời ấm áp, nhẹ nhàng, khích lệ; không đưa lời khuyê
                     throw new Error(errorData.error || 'Lỗi không xác định từ server');
                 }
                 const data = await response.json();
+                conversationHistory.push({ role: 'user', content: userMessage });
+                conversationHistory.push({ role: 'assistant', content: data.reply });
                 addMessage(data.reply, 'bot');
             } catch (error) {
                 console.error('Error fetching bot response:', error);
