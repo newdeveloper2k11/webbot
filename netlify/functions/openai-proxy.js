@@ -11,10 +11,16 @@ exports.handler = async function(event) {
     }
 
     try {
-        const { message } = JSON.parse(event.body);
+        const { message, systemPrompt } = JSON.parse(event.body);
         if (!message) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Không có tin nhắn nào được cung cấp.' }) };
         }
+
+        const messages = [];
+        if (systemPrompt) {
+            messages.push({ role: 'system', content: systemPrompt });
+        }
+        messages.push({ role: 'user', content: message });
 
         const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -24,7 +30,7 @@ exports.handler = async function(event) {
             },
             body: JSON.stringify({
                 model: 'ft:gpt-4o-2024-08-06:vtn-architects::CRsIxlHp',
-                messages: [{ role: 'user', content: message }],
+                messages,
                 temperature: 0.7,
             }),
         });
